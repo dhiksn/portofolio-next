@@ -9,8 +9,6 @@ import {
   FileWarning,
 } from "lucide-react";
 
-import PdfViewer from "./PdfViewerDynamic";
-
 interface PdfViewerClientProps {
   file: string;
   title: string;
@@ -39,7 +37,7 @@ export default function PdfViewerClient({
   };
 
   return (
-    <div className="h-screen bg-bg flex flex-col overflow-hidden">
+    <div className="h-screen bg-bg flex flex-col">
       {/* HEADER */}
       <header className="shrink-0 h-16 sm:h-[72px] border-b border-border flex items-center justify-between gap-3 px-4 sm:px-6 bg-bg2/90 backdrop-blur-md z-50">
         <div className="flex items-center gap-3 min-w-0">
@@ -118,7 +116,11 @@ export default function PdfViewerClient({
           </div>
         ) : (
           <div className="absolute inset-0">
-            <PdfViewer file={file} />
+            <iframe
+              src={`${file}#toolbar=0&navpanes=0&scrollbar=1`}
+              className="h-full w-full border-0"
+              title={title}
+            />
           </div>
         )}
       </main>
