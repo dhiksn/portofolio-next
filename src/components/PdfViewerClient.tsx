@@ -102,7 +102,7 @@ export default function PdfViewerClient({ file, title, downloadFile }: PdfViewer
             </div>
           </div>
         ) : (
-          // Desktop - PAKAI GOOGLE DOCS VIEWER UNTUK EMBED BERSIH TANPA TOOLBAR LOKAL
+          // Desktop - PERHATIKAN PENGGUNAAN TANDA BACKTICK ( ` ) DI SRC
           <div className="absolute inset-0 w-full h-full overflow-hidden">
             <iframe
               src={`https://google.com{encodeURIComponent(file)}&embedded=true`}
@@ -111,6 +111,7 @@ export default function PdfViewerClient({ file, title, downloadFile }: PdfViewer
             />
           </div>
         )}
+
       </div>
     </div>
   );
