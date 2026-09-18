@@ -1,129 +1,122 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
-  ArrowLeft,
-  Download,
-  ExternalLink,
-  FileWarning,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  RotateCcw,
 } from "lucide-react";
 
 interface PdfViewerClientProps {
   file: string;
   title: string;
-  downloadFile: string;
 }
 
 export default function PdfViewerClient({
   file,
   title,
-  downloadFile,
 }: PdfViewerClientProps) {
-  const router = useRouter();
-  const [isMobile, setIsMobile] = useState(false);
+  const [zoom, setZoom] = useState(100);
 
-  useEffect(() => {
-    const ua = navigator.userAgent || "";
-    setIsMobile(/Android|iPhone|iPad|iPod/i.test(ua));
-  }, []);
+  const zoomIn = () => {
+    setZoom((prev) => Math.min(prev + 10, 200));
+  };
 
-  const goBack = () => {
-    if (window.history.length > 1) {
-      router.back();
+  const zoomOut = () => {
+    setZoom((prev) => Math.max(prev - 10, 50));
+  };
+
+  const resetZoom = () => {
+    setZoom(100);
+  };
+
+  const fullscreen = () => {
+    const element = document.getElementById("pdf-viewer");
+
+    if (!element) return;
+
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
     } else {
-      router.push("/#portofolio");
+      element.requestFullscreen();
     }
   };
 
   return (
-    <div className="h-screen bg-bg flex flex-col">
-      {/* HEADER */}
-      <header className="shrink-0 h-16 sm:h-[72px] border-b border-border flex items-center justify-between gap-3 px-4 sm:px-6 bg-bg2/90 backdrop-blur-md z-50">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={goBack}
-            className="shrink-0 w-9 h-9 rounded-full border border-border flex items-center justify-center text-muted hover:text-white hover:border-white/40 transition-colors"
-            aria-label="Kembali"
-          >
-            <ArrowLeft size={16} />
-          </button>
-
-          <h1 className="text-sm sm:text-base font-medium text-white truncate">
-            {title}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <a
-            href={file}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium border border-border text-muted rounded-full px-3.5 py-2 hover:text-white hover:border-white/40 transition-colors"
-          >
-            <ExternalLink size={13} />
-            Tab Baru
-          </a>
-
-          <a
-            href={downloadFile}
-            download
-            className="inline-flex items-center gap-1.5 text-xs font-medium bg-white text-black rounded-full px-3.5 py-2 hover:bg-white/90 transition-colors"
-          >
-            <Download size={13} />
-            Download
-          </a>
-        </div>
-      </header>
-
+    <div
+      id="pdf-viewer"
+      className="relative h-full w-full overflow-hidden bg-black"
+    >
       {/* PDF */}
-      <main className="relative flex-1 min-h-0 bg-[#1a1a1a]">
-        {isMobile ? (
-          <div className="h-full flex flex-col items-center justify-center gap-5 px-6 text-center">
-            <FileWarning size={36} className="text-dim" />
+      <div className="h-full w-full overflow-auto">
+        <div
+          className="min-h-full origin-top-left"
+          style={{
+            width: `${zoom}%`,
+            minWidth: "100%",
+          }}
+        >
+          <iframe
+            src={`${file}#toolbar=0&navpanes=0&scrollbar=1`}
+            className="h-full min-h-screen w-full border-0"
+            title={title}
+          />
+        </div>
+      </div>
 
-            <div className="space-y-1.5">
-              <p className="text-white text-sm font-medium">
-                Preview PDF terbatas di HP
-              </p>
+      {/* Custom Controls */}
+      <div className="absolute bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-1 rounded-2xl border border-white/10 bg-black/70 p-1.5 shadow-2xl backdrop-blur-xl">
+        {/* Zoom Out */}
+        <button
+          onClick={zoomOut}
+          disabled={zoom <= 50}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+          title="Zoom Out"
+        >
+          <ZoomOut size={19} />
+        </button>
 
-              <p className="text-muted text-xs max-w-xs">
-                Buka di tab baru atau download filenya supaya tampilan
-                lebih rapi.
-              </p>
-            </div>
+        {/* Zoom Percentage */}
+        <button
+          onClick={resetZoom}
+          className="min-w-[55px] rounded-xl px-2 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+          title="Reset Zoom"
+        >
+          {zoom}%
+        </button>
 
-            <div className="flex items-center gap-3">
-              <a
-                href={file}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium border border-border text-muted rounded-full px-4 py-2 hover:text-white hover:border-white/40 transition-colors"
-              >
-                <ExternalLink size={13} />
-                Buka
-              </a>
+        {/* Zoom In */}
+        <button
+          onClick={zoomIn}
+          disabled={zoom >= 200}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
+          title="Zoom In"
+        >
+          <ZoomIn size={19} />
+        </button>
 
-              <a
-                href={downloadFile}
-                download
-                className="inline-flex items-center gap-1.5 text-xs font-medium bg-white text-black rounded-full px-4 py-2 hover:bg-white/90 transition-colors"
-              >
-                <Download size={13} />
-                Download
-              </a>
-            </div>
-          </div>
-        ) : (
-          <div className="absolute inset-0">
-            <iframe
-              src={`${file}#toolbar=0&navpanes=0&scrollbar=1`}
-              className="h-full w-full border-0"
-              title={title}
-            />
-          </div>
-        )}
-      </main>
+        {/* Divider */}
+        <div className="mx-1 h-6 w-px bg-white/10" />
+
+        {/* Reset */}
+        <button
+          onClick={resetZoom}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-white transition hover:bg-white/10"
+          title="Reset Zoom"
+        >
+          <RotateCcw size={18} />
+        </button>
+
+        {/* Fullscreen */}
+        <button
+          onClick={fullscreen}
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-white transition hover:bg-white/10"
+          title="Fullscreen"
+        >
+          <Maximize size={18} />
+        </button>
+      </div>
     </div>
   );
 }
