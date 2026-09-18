@@ -413,13 +413,265 @@ export default function PdfViewerClient({
       ref={viewerRef}
       className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-[#1a1a1a]"
     >
-      {/* PDF VIEWER */}
+      {/* NAVBAR */}
+      <nav className="relative z-[100] flex h-16 shrink-0 items-center border-b border-white/[0.08] bg-[#111]/90 px-4 shadow-lg backdrop-blur-xl">
+        
+        {/* LEFT */}
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            onClick={() => window.history.back()}
+            title="Kembali"
+            className="
+              flex h-9 w-9 shrink-0 items-center justify-center
+              rounded-full
+              border border-white/[0.08]
+              bg-white/[0.05]
+              text-white/60
+              transition
+              hover:bg-white/[0.1]
+              hover:text-white
+            "
+          >
+            <ChevronLeft size={17} />
+          </button>
 
+          <div className="hidden min-w-0 sm:block">
+            <p className="truncate text-sm font-medium text-white">
+              {title}
+            </p>
+
+            <p className="text-[11px] text-white/35">
+              PDF Document
+            </p>
+          </div>
+        </div>
+
+        {/* CENTER */}
+        <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1">
+          
+          {/* PREVIOUS */}
+          <button
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage <= 1}
+            title="Halaman sebelumnya"
+            className="
+              flex h-9 w-9 items-center justify-center
+              rounded-full
+              border border-white/[0.08]
+              bg-white/[0.05]
+              text-white/60
+              transition
+              hover:bg-white/[0.1]
+              hover:text-white
+              disabled:pointer-events-none
+              disabled:opacity-30
+            "
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {/* PAGE */}
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            value={currentPage}
+            onChange={(e) => {
+              const value =
+                parseInt(e.target.value) || 1;
+
+              goToPage(value);
+            }}
+            className="
+              h-9
+              w-12
+              rounded-md
+              border border-white/[0.1]
+              bg-white/[0.06]
+              text-center
+              text-xs
+              text-white
+              outline-none
+              focus:border-white/[0.3]
+            "
+          />
+
+          <span className="px-1 text-xs text-white/40">
+            / {totalPages}
+          </span>
+
+          {/* NEXT */}
+          <button
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            title="Halaman berikutnya"
+            className="
+              flex h-9 w-9 items-center justify-center
+              rounded-full
+              border border-white/[0.08]
+              bg-white/[0.05]
+              text-white/60
+              transition
+              hover:bg-white/[0.1]
+              hover:text-white
+              disabled:pointer-events-none
+              disabled:opacity-30
+            "
+          >
+            <ChevronRight size={16} />
+          </button>
+
+          <div className="mx-2 h-5 w-px bg-white/[0.1]" />
+
+          {/* ZOOM OUT */}
+          <button
+            onClick={zoomOut}
+            disabled={zoom <= 25}
+            title="Zoom out"
+            className="
+              flex h-9 w-9 items-center justify-center
+              rounded-full
+              border border-white/[0.08]
+              bg-white/[0.05]
+              text-white/60
+              transition
+              hover:bg-white/[0.1]
+              hover:text-white
+              disabled:pointer-events-none
+              disabled:opacity-30
+            "
+          >
+            <ZoomOut size={15} />
+          </button>
+
+          {/* ZOOM */}
+          <input
+            type="number"
+            min={25}
+            max={300}
+            value={zoom}
+            onChange={(e) =>
+              updateZoom(
+                parseInt(e.target.value) || 100
+              )
+            }
+            className="
+              h-9
+              w-14
+              rounded-md
+              border border-white/[0.1]
+              bg-white/[0.06]
+              text-center
+              text-xs
+              text-white
+              outline-none
+              focus:border-white/[0.3]
+            "
+          />
+
+          <span className="text-xs text-white/40">
+            %
+          </span>
+
+          {/* ZOOM IN */}
+          <button
+            onClick={zoomIn}
+            disabled={zoom >= 300}
+            title="Zoom in"
+            className="
+              flex h-9 w-9 items-center justify-center
+              rounded-full
+              border border-white/[0.08]
+              bg-white/[0.05]
+              text-white/60
+              transition
+              hover:bg-white/[0.1]
+              hover:text-white
+              disabled:pointer-events-none
+              disabled:opacity-30
+            "
+          >
+            <ZoomIn size={15} />
+          </button>
+        </div>
+
+        {/* RIGHT */}
+        <div className="ml-auto flex items-center gap-1">
+          
+          {/* SEARCH */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            title="Cari"
+            className={`
+              flex h-9 w-9 items-center justify-center
+              rounded-full
+              border
+              transition
+              ${
+                searchOpen
+                  ? "border-white/[0.35] bg-white/[0.14] text-white"
+                  : "border-white/[0.08] bg-white/[0.05] text-white/60 hover:bg-white/[0.1] hover:text-white"
+              }
+            `}
+          >
+            <Search size={15} />
+          </button>
+
+          {/* DOWNLOAD */}
+          <a
+            href={downloadFile || file}
+            download
+            title="Download"
+            className="
+              flex h-9 items-center gap-1.5
+              rounded-full
+              border border-white/[0.12]
+              bg-white/[0.06]
+              px-3
+              text-xs
+              font-medium
+              text-white/70
+              transition
+              hover:bg-white/[0.12]
+              hover:text-white
+            "
+          >
+            <Download size={14} />
+
+            <span className="hidden md:inline">
+              Download
+            </span>
+          </a>
+
+          {/* FULLSCREEN */}
+          <button
+            onClick={toggleFullscreen}
+            title="Fullscreen"
+            className="
+              flex h-9 w-9 items-center justify-center
+              rounded-full
+              border border-white/[0.08]
+              bg-white/[0.05]
+              text-white/60
+              transition
+              hover:bg-white/[0.1]
+              hover:text-white
+            "
+          >
+            <Maximize size={14} />
+          </button>
+        </div>
+      </nav>
+
+      {/* PDF VIEWER */}
       <div
         ref={scrollRef}
         className="
+          min-h-0
           flex-1
-          overflow-auto
+          w-full
+          overflow-y-auto
+          overflow-x-auto
           px-4
           py-6
           [scrollbar-color:rgba(255,255,255,0.14)_transparent]
@@ -428,14 +680,13 @@ export default function PdfViewerClient({
       />
 
       {/* SEARCH PANEL */}
-
       {searchOpen && (
         <div
           className="
             absolute
             right-4
             top-20
-            z-[100]
+            z-[200]
             w-[360px]
             overflow-hidden
             rounded-xl
@@ -520,258 +771,6 @@ export default function PdfViewerClient({
           </div>
         </div>
       )}
-
-      {/* CONTROL BAR */}
-
-      <div
-        className="
-          absolute
-          top-5
-          left-1/2
-          z-50
-          flex
-          -translate-x-1/2
-          items-center
-          gap-1
-          rounded-full
-          border
-          border-white/[0.12]
-          bg-black/80
-          px-2
-          py-1.5
-          shadow-[0_8px_32px_rgba(0,0,0,0.7)]
-          backdrop-blur-xl
-        "
-      >
-        {/* PREVIOUS */}
-
-        <button
-          onClick={() =>
-            goToPage(currentPage - 1)
-          }
-          disabled={currentPage <= 1}
-          title="Halaman sebelumnya"
-          className="
-            flex h-9 w-9 items-center justify-center
-            rounded-full
-            border border-white/[0.08]
-            bg-white/[0.06]
-            text-white/60
-            transition
-            hover:bg-white/[0.12]
-            hover:text-white
-            disabled:pointer-events-none
-            disabled:opacity-30
-          "
-        >
-          <ChevronLeft size={16} />
-        </button>
-
-        {/* PAGE */}
-
-        <input
-          type="number"
-          min={1}
-          max={totalPages}
-          value={currentPage}
-          onChange={(e) => {
-            const value =
-              parseInt(e.target.value) || 1;
-
-            goToPage(value);
-          }}
-          className="
-            h-9
-            w-12
-            rounded-md
-            border border-white/[0.1]
-            bg-white/[0.06]
-            text-center
-            text-xs
-            text-white
-            outline-none
-            focus:border-white/[0.3]
-          "
-        />
-
-        <span className="px-1 text-xs text-white/40">
-          / {totalPages}
-        </span>
-
-        {/* NEXT */}
-
-        <button
-          onClick={() =>
-            goToPage(currentPage + 1)
-          }
-          disabled={
-            currentPage >= totalPages
-          }
-          title="Halaman berikutnya"
-          className="
-            flex h-9 w-9 items-center justify-center
-            rounded-full
-            border border-white/[0.08]
-            bg-white/[0.06]
-            text-white/60
-            transition
-            hover:bg-white/[0.12]
-            hover:text-white
-            disabled:pointer-events-none
-            disabled:opacity-30
-          "
-        >
-          <ChevronRight size={16} />
-        </button>
-
-        {/* DIVIDER */}
-
-        <div className="mx-1 h-5 w-px bg-white/[0.12]" />
-
-        {/* ZOOM OUT */}
-
-        <button
-          onClick={zoomOut}
-          disabled={zoom <= 25}
-          title="Zoom out"
-          className="
-            flex h-9 w-9 items-center justify-center
-            rounded-full
-            border border-white/[0.08]
-            bg-white/[0.06]
-            text-white/60
-            transition
-            hover:bg-white/[0.12]
-            hover:text-white
-            disabled:pointer-events-none
-            disabled:opacity-30
-          "
-        >
-          <ZoomOut size={15} />
-        </button>
-
-        {/* ZOOM */}
-
-        <input
-          type="number"
-          min={25}
-          max={300}
-          value={zoom}
-          onChange={(e) =>
-            updateZoom(
-              parseInt(e.target.value) || 100
-            )
-          }
-          className="
-            h-9
-            w-14
-            rounded-md
-            border border-white/[0.1]
-            bg-white/[0.06]
-            text-center
-            text-xs
-            text-white
-            outline-none
-            focus:border-white/[0.3]
-          "
-        />
-
-        <span className="text-xs text-white/40">
-          %
-        </span>
-
-        {/* ZOOM IN */}
-
-        <button
-          onClick={zoomIn}
-          disabled={zoom >= 300}
-          title="Zoom in"
-          className="
-            flex h-9 w-9 items-center justify-center
-            rounded-full
-            border border-white/[0.08]
-            bg-white/[0.06]
-            text-white/60
-            transition
-            hover:bg-white/[0.12]
-            hover:text-white
-            disabled:pointer-events-none
-            disabled:opacity-30
-          "
-        >
-          <ZoomIn size={15} />
-        </button>
-
-        {/* DIVIDER */}
-
-        <div className="mx-1 h-5 w-px bg-white/[0.12]" />
-
-        {/* SEARCH */}
-
-        <button
-          onClick={() => setSearchOpen(true)}
-          title="Cari"
-          className={`
-            flex h-9 w-9 items-center justify-center
-            rounded-full
-            border
-            transition
-            ${
-              searchOpen
-                ? "border-white/[0.35] bg-white/[0.14] text-white"
-                : "border-white/[0.08] bg-white/[0.06] text-white/60 hover:bg-white/[0.12] hover:text-white"
-            }
-          `}
-        >
-          <Search size={15} />
-        </button>
-
-        {/* DOWNLOAD */}
-
-        <a
-          href={downloadFile || file}
-          download
-          title="Download"
-          className="
-            flex h-9 items-center gap-1.5
-            rounded-full
-            border border-white/[0.18]
-            bg-white/[0.1]
-            px-3
-            text-xs
-            font-medium
-            text-white/80
-            transition
-            hover:bg-white/[0.18]
-            hover:text-white
-          "
-        >
-          <Download size={14} />
-
-          <span className="hidden sm:inline">
-            Download
-          </span>
-        </a>
-
-        {/* FULLSCREEN */}
-
-        <button
-          onClick={toggleFullscreen}
-          title="Fullscreen"
-          className="
-            flex h-9 w-9 items-center justify-center
-            rounded-full
-            border border-white/[0.08]
-            bg-white/[0.06]
-            text-white/60
-            transition
-            hover:bg-white/[0.12]
-            hover:text-white
-          "
-        >
-          <Maximize size={14} />
-        </button>
-      </div>
     </div>
   );
 }
