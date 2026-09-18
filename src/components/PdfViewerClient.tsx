@@ -80,6 +80,10 @@ export default function PdfViewerClient({
 
         if (cancelled) return;
 
+        console.info(
+          `[PdfViewer] Dokumen dimuat, total halaman: ${document.numPages}`
+        );
+
         setPdf(document);
         setTotalPages(document.numPages);
         setLoading(false);
@@ -147,70 +151,86 @@ export default function PdfViewerClient({
       ) {
         if (cancelled) return;
 
-        const page = await pdf.getPage(pageNumber);
+        try {
+          const page = await pdf.getPage(pageNumber);
 
-        const viewport = page.getViewport({
-          scale,
-        });
+          const viewport = page.getViewport({
+            scale,
+          });
 
-        const wrapper = document.createElement("div");
+          const wrapper = document.createElement("div");
 
-        wrapper.className =
-          "pdf-page relative bg-white shadow-2xl";
+          wrapper.className =
+            "pdf-page relative bg-white shadow-2xl";
 
-        wrapper.dataset.page = String(pageNumber);
+          wrapper.dataset.page = String(pageNumber);
 
-        /*
-        * Ukuran halaman
-        */
-        wrapper.style.width = `${viewport.width}px`;
-        wrapper.style.height = `${viewport.height}px`;
+          /*
+          * Ukuran halaman
+          */
+          wrapper.style.width = `${viewport.width}px`;
+          wrapper.style.height = `${viewport.height}px`;
 
-        /*
-        * Center halaman
-        */
-        wrapper.style.marginLeft = "auto";
-        wrapper.style.marginRight = "auto";
-        wrapper.style.marginBottom = "16px";
+          /*
+          * Center halaman
+          */
+          wrapper.style.marginLeft = "auto";
+          wrapper.style.marginRight = "auto";
+          wrapper.style.marginBottom = "16px";
 
-        /*
-        * Jangan biarkan flex ikut campur.
-        */
-        wrapper.style.display = "block";
+          /*
+          * Jangan biarkan flex ikut campur.
+          */
+          wrapper.style.display = "block";
 
-        const canvas = document.createElement("canvas");
+          const canvas = document.createElement("canvas");
 
-        const context = canvas.getContext("2d");
+          const context = canvas.getContext("2d");
 
-        if (!context) continue;
+          if (!context) continue;
 
-        const devicePixelRatio =
-          window.devicePixelRatio || 1;
+          const devicePixelRatio =
+            window.devicePixelRatio || 1;
 
-        const renderViewport = page.getViewport({
-          scale: scale * devicePixelRatio,
-        });
+          const renderViewport = page.getViewport({
+            scale: scale * devicePixelRatio,
+          });
 
-        canvas.width = Math.floor(renderViewport.width);
-        canvas.height = Math.floor(renderViewport.height);
+          canvas.width = Math.floor(renderViewport.width);
+          canvas.height = Math.floor(renderViewport.height);
 
-        canvas.style.width = `${viewport.width}px`;
-        canvas.style.height = `${viewport.height}px`;
+          canvas.style.width = `${viewport.width}px`;
+          canvas.style.height = `${viewport.height}px`;
 
-        canvas.style.display = "block";
+          canvas.style.display = "block";
 
-        wrapper.appendChild(canvas);
-        pagesContainer.appendChild(wrapper);
+          wrapper.appendChild(canvas);
+          pagesContainer.appendChild(wrapper);
 
-        pagesRef.current.push({
-          page: pageNumber,
-          element: wrapper,
-        });
+          pagesRef.current.push({
+            page: pageNumber,
+            element: wrapper,
+          });
 
-        await page.render({
-          canvasContext: context,
-          viewport: renderViewport,
-        }).promise;
+          await page.render({
+            canvasContext: context,
+            viewport: renderViewport,
+          }).promise;
+        } catch (err) {
+          // Jangan biarkan 1 halaman gagal menghentikan
+          // seluruh proses render, sehingga sisa dokumen
+          // tetap bisa muncul (dan tetap bisa discroll).
+          console.error(
+            `[PdfViewer] Gagal render halaman ${pageNumber}:`,
+            err
+          );
+        }
+      }
+
+      if (!cancelled) {
+        console.info(
+          `[PdfViewer] Render selesai: ${pagesRef.current.length}/${pdf.numPages} halaman berhasil`
+        );
       }
     }
 
