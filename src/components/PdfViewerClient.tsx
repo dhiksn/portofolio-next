@@ -102,15 +102,15 @@ export default function PdfViewerClient({ file, title, downloadFile }: PdfViewer
             </div>
           </div>
         ) : (
-          // Desktop - PAKAI IFRAME ABSOLUTE FULL SCREEN
+          // Desktop - PAKAI GOOGLE DOCS VIEWER UNTUK EMBED BERSIH TANPA TOOLBAR LOKAL
           <div className="absolute inset-0 w-full h-full overflow-hidden">
             <iframe
-              src={`${file}#toolbar=1&navpanes=0&scrollbar=1`}
+              src={`https://google.com{encodeURIComponent(file)}&embedded=true`}
               className="w-full h-full border-0"
               title={title}
             />
           </div>
-        )}  
+        )}
       </div>
     </div>
   );
