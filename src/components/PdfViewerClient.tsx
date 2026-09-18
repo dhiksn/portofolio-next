@@ -77,13 +77,13 @@ export default function PdfViewerClient({
   return (
     <div
       ref={viewerRef}
-      className="relative flex h-full min-h-screen w-full flex-col overflow-hidden bg-[#1a1a1a]"
+      className="relative flex h-[100dvh] w-full flex-col overflow-hidden bg-[#1a1a1a]"
     >
       {/* PDF */}
-      <div className="flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <iframe
           src={`${file}#toolbar=0&navpanes=0&scrollbar=1`}
-          className="h-full w-full border-0"
+          className="block h-full w-full border-0"
           title={title}
         />
       </div>
