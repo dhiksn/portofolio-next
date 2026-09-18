@@ -101,8 +101,8 @@ export default function PdfViewerClient({
   }, [file]);
 
   /*
-   * Render pages
-   */
+  * Render pages
+  */
   useEffect(() => {
     if (!pdf || !scrollRef.current) return;
 
@@ -113,6 +113,7 @@ export default function PdfViewerClient({
 
       if (!container) return;
 
+      // Bersihkan halaman sebelumnya
       container.innerHTML = "";
       pagesRef.current = [];
 
@@ -121,13 +122,16 @@ export default function PdfViewerClient({
 
       renderedScaleRef.current = scale;
 
-      // Container untuk membuat halaman selalu berada di tengah
+      // Container khusus halaman PDF
       const pagesContainer = document.createElement("div");
 
       pagesContainer.style.width = "100%";
+      pagesContainer.style.minHeight = "max-content";
       pagesContainer.style.display = "flex";
       pagesContainer.style.flexDirection = "column";
       pagesContainer.style.alignItems = "center";
+      pagesContainer.style.paddingBottom = "40px";
+      pagesContainer.style.boxSizing = "border-box";
 
       container.appendChild(pagesContainer);
 
@@ -151,7 +155,10 @@ export default function PdfViewerClient({
 
         wrapper.dataset.page = String(pageNumber);
 
+        wrapper.style.width = `${viewport.width}px`;
+        wrapper.style.height = `${viewport.height}px`;
         wrapper.style.marginBottom = "16px";
+        wrapper.style.flexShrink = "0";
 
         const canvas = document.createElement("canvas");
 
@@ -171,12 +178,9 @@ export default function PdfViewerClient({
 
         canvas.style.width = `${viewport.width}px`;
         canvas.style.height = `${viewport.height}px`;
-
-        wrapper.style.width = `${viewport.width}px`;
-        wrapper.style.height = `${viewport.height}px`;
+        canvas.style.display = "block";
 
         wrapper.appendChild(canvas);
-
         pagesContainer.appendChild(wrapper);
 
         pagesRef.current.push({
@@ -240,8 +244,8 @@ export default function PdfViewerClient({
   }, [pdf]);
 
   /*
-   * Scroll to page
-   */
+  * Scroll to page
+  */
   function goToPage(pageNumber: number) {
     const container = scrollRef.current;
 
@@ -264,13 +268,14 @@ export default function PdfViewerClient({
     const targetRect =
       target.element.getBoundingClientRect();
 
-    const scrollTop =
-      container.scrollTop +
-      (targetRect.top - containerRect.top) -
+    const offset =
+      targetRect.top -
+      containerRect.top +
+      container.scrollTop -
       24;
 
     container.scrollTo({
-      top: scrollTop,
+      top: offset,
       behavior: "smooth",
     });
 
@@ -278,8 +283,8 @@ export default function PdfViewerClient({
   }
 
   /*
-   * Zoom
-   */
+  * Zoom
+  */
   function updateZoom(value: number) {
     const newZoom = Math.max(
       25,
@@ -287,22 +292,14 @@ export default function PdfViewerClient({
     );
 
     setZoom(newZoom);
-
-    setTimeout(() => {
-      goToPage(currentPage);
-    }, 100);
   }
 
   function zoomIn() {
-    updateZoom(
-      Math.round(zoom / 10) * 10 + 10
-    );
+    updateZoom(zoom + 10);
   }
 
   function zoomOut() {
-    updateZoom(
-      Math.round(zoom / 10) * 10 - 10
-    );
+    updateZoom(zoom - 10);
   }
 
   /*
@@ -699,12 +696,10 @@ export default function PdfViewerClient({
           min-h-0
           flex-1
           w-full
-          overflow-y-auto
+          overflow-y-scroll
           overflow-x-hidden
           px-4
           py-6
-          [scrollbar-color:rgba(255,255,255,0.14)_transparent]
-          [scrollbar-width:thin]
         "
       />
 
