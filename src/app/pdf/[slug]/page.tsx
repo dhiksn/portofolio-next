@@ -33,6 +33,7 @@ export default async function PdfPage({ params }: { params: Promise<{ slug: stri
       <PdfViewerClient
         file={project.pdfFile}
         title={project.title}
+        downloadFile={project.downloadFile || project.pdfFile}
       />
     </Suspense>
   );
