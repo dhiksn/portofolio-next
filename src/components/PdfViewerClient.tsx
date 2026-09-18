@@ -121,7 +121,21 @@ export default function PdfViewerClient({
 
       renderedScaleRef.current = scale;
 
-      for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
+      // Container untuk membuat halaman selalu berada di tengah
+      const pagesContainer = document.createElement("div");
+
+      pagesContainer.style.width = "100%";
+      pagesContainer.style.display = "flex";
+      pagesContainer.style.flexDirection = "column";
+      pagesContainer.style.alignItems = "center";
+
+      container.appendChild(pagesContainer);
+
+      for (
+        let pageNumber = 1;
+        pageNumber <= pdf.numPages;
+        pageNumber++
+      ) {
         if (cancelled) return;
 
         const page = await pdf.getPage(pageNumber);
@@ -137,7 +151,7 @@ export default function PdfViewerClient({
 
         wrapper.dataset.page = String(pageNumber);
 
-        wrapper.style.margin = "0 auto 16px";
+        wrapper.style.marginBottom = "16px";
 
         const canvas = document.createElement("canvas");
 
@@ -145,7 +159,8 @@ export default function PdfViewerClient({
 
         if (!context) continue;
 
-        const devicePixelRatio = window.devicePixelRatio || 1;
+        const devicePixelRatio =
+          window.devicePixelRatio || 1;
 
         const renderViewport = page.getViewport({
           scale: scale * devicePixelRatio,
@@ -161,7 +176,8 @@ export default function PdfViewerClient({
         wrapper.style.height = `${viewport.height}px`;
 
         wrapper.appendChild(canvas);
-        container.appendChild(wrapper);
+
+        pagesContainer.appendChild(wrapper);
 
         pagesRef.current.push({
           page: pageNumber,
@@ -227,7 +243,9 @@ export default function PdfViewerClient({
    * Scroll to page
    */
   function goToPage(pageNumber: number) {
-    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+
+    if (!container) return;
 
     const page = Math.max(
       1,
@@ -240,9 +258,20 @@ export default function PdfViewerClient({
 
     if (!target) return;
 
-    target.element.scrollIntoView({
+    const containerRect =
+      container.getBoundingClientRect();
+
+    const targetRect =
+      target.element.getBoundingClientRect();
+
+    const scrollTop =
+      container.scrollTop +
+      (targetRect.top - containerRect.top) -
+      24;
+
+    container.scrollTo({
+      top: scrollTop,
       behavior: "smooth",
-      block: "start",
     });
 
     setCurrentPage(page);
@@ -671,7 +700,7 @@ export default function PdfViewerClient({
           flex-1
           w-full
           overflow-y-auto
-          overflow-x-auto
+          overflow-x-hidden
           px-4
           py-6
           [scrollbar-color:rgba(255,255,255,0.14)_transparent]
