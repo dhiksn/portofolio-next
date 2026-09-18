@@ -102,16 +102,15 @@ export default function PdfViewerClient({ file, title, downloadFile }: PdfViewer
             </div>
           </div>
         ) : (
-          // Desktop - PERHATIKAN PENGGUNAAN TANDA BACKTICK ( ` ) DI SRC
+          // Desktop
           <div className="absolute inset-0 w-full h-full overflow-hidden">
             <iframe
-              src={`https://google.com{encodeURIComponent(file)}&embedded=true`}
+              src={`${file}#toolbar=0&navpanes=0&scrollbar=1`}
               className="w-full h-full border-0"
               title={title}
             />
           </div>
         )}
-
       </div>
     </div>
   );
