@@ -133,9 +133,11 @@ export default function PdfViewerClient({
         const wrapper = document.createElement("div");
 
         wrapper.className =
-          "pdf-page relative mb-4 shrink-0 bg-white shadow-2xl";
+          "pdf-page relative shrink-0 bg-white shadow-2xl";
 
         wrapper.dataset.page = String(pageNumber);
+
+        wrapper.style.margin = "0 auto 16px";
 
         const canvas = document.createElement("canvas");
 
@@ -432,7 +434,7 @@ export default function PdfViewerClient({
           className="
             absolute
             right-4
-            top-4
+            top-20
             z-[100]
             w-[360px]
             overflow-hidden
@@ -524,7 +526,7 @@ export default function PdfViewerClient({
       <div
         className="
           absolute
-          bottom-5
+          top-5
           left-1/2
           z-50
           flex
