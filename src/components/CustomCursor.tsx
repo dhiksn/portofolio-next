@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { motion, useMotionValue, useSpring } from "framer-motion";
 
 export default function CustomCursor() {
+  const pathname = usePathname();
+  // Halaman PDF viewer butuh cursor asli (buat lihat pointer/I-beam
+  // saat hover tombol atau select teks), jadi custom cursor di-skip di sini.
+  const isPdfViewer = pathname?.startsWith("/pdf");
+
   const [enabled, setEnabled] = useState(false);
   const [hovering, setHovering] = useState(false);
   const x = useMotionValue(-100);
@@ -12,6 +18,8 @@ export default function CustomCursor() {
   const ringY = useSpring(y, { damping: 25, stiffness: 300, mass: 0.4 });
 
   useEffect(() => {
+    if (isPdfViewer) return;
+
     const isFine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
     if (!isFine) return;
     setEnabled(true);
@@ -32,9 +40,9 @@ export default function CustomCursor() {
       window.removeEventListener("mouseover", over);
       document.body.classList.remove("has-cursor");
     };
-  }, [x, y]);
+  }, [x, y, isPdfViewer]);
 
-  if (!enabled) return null;
+  if (!enabled || isPdfViewer) return null;
 
   return (
     <>
