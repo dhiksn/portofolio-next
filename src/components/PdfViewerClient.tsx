@@ -529,7 +529,7 @@ export default function PdfViewerClient({
               4
             );
             height = glyphHeight + 2;
-          }
+          }   
 
           results.push({
             page: pageNumber,
