@@ -1058,7 +1058,10 @@ export default function PdfViewerClient({
           </div>
 
           {/* RESULTS LIST */}
-          <div className="max-h-[320px] overflow-y-auto py-2">
+          <div
+            data-lenis-prevent
+            className="max-h-[320px] overflow-y-auto py-2"
+          >
             {searchText.trim() && searchResults.length === 0 && (
               <div className="px-4 py-8 text-center text-[13px] text-white/40">
                 Tidak ditemukan
