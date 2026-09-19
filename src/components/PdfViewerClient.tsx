@@ -743,6 +743,7 @@ export default function PdfViewerClient({
       {/* PDF VIEWER */}
       <div
         ref={scrollRef}
+        data-lenis-prevent
         className="
           relative
           min-h-0
