@@ -23,6 +23,19 @@ interface PdfViewerClientProps {
 interface PageData {
   page: number;
   element: HTMLDivElement;
+  viewport: any;
+  highlightLayer: HTMLDivElement;
+}
+
+interface SearchMatch {
+  page: number;
+  before: string;
+  match: string;
+  after: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
 }
 
 export default function PdfViewerClient({
@@ -44,14 +57,21 @@ export default function PdfViewerClient({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
 
-  const [searchResults, setSearchResults] = useState<
-    { page: number; text: string }[]
-  >([]);
+  const [searchResults, setSearchResults] = useState<SearchMatch[]>([]);
 
   const [searchIndex, setSearchIndex] = useState(-1);
 
+  const searchPanelRef = useRef<HTMLDivElement>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageItemsCacheRef = useRef<Map<number, any[]>>(new Map());
+
   const pagesRef = useRef<PageData[]>([]);
   const renderedScaleRef = useRef(1);
+
+  const searchTextRef = useRef("");
+  const searchPdfRef = useRef<any>(null);
+  searchTextRef.current = searchText;
+  searchPdfRef.current = searchPdf;
 
   /*
    * PDF.js worker
@@ -205,11 +225,23 @@ export default function PdfViewerClient({
           canvas.style.display = "block";
 
           wrapper.appendChild(canvas);
+
+          const highlightLayer = document.createElement("div");
+          highlightLayer.className =
+            "pdf-search-highlight-layer";
+          highlightLayer.style.position = "absolute";
+          highlightLayer.style.inset = "0";
+          highlightLayer.style.overflow = "hidden";
+          highlightLayer.style.pointerEvents = "none";
+          wrapper.appendChild(highlightLayer);
+
           pagesContainer.appendChild(wrapper);
 
           pagesRef.current.push({
             page: pageNumber,
             element: wrapper,
+            viewport,
+            highlightLayer,
           });
 
           await page.render({
@@ -231,6 +263,12 @@ export default function PdfViewerClient({
         console.info(
           `[PdfViewer] Render selesai: ${pagesRef.current.length}/${pdf.numPages} halaman berhasil`
         );
+
+        // Kalau lagi ada pencarian aktif (misal abis ganti zoom),
+        // hitung ulang posisi highlight-nya karena skala berubah.
+        if (searchTextRef.current.trim()) {
+          searchPdfRef.current?.(searchTextRef.current);
+        }
       }
     }
 
@@ -373,6 +411,59 @@ export default function PdfViewerClient({
   /*
    * Search
    */
+  useEffect(() => {
+    pageItemsCacheRef.current.clear();
+    setSearchResults([]);
+    setSearchIndex(-1);
+  }, [pdf]);
+
+  async function getPageItems(pageNumber: number): Promise<any[]> {
+    const cached = pageItemsCacheRef.current.get(pageNumber);
+    if (cached) return cached;
+
+    const page = await pdf.getPage(pageNumber);
+    const textContent = await page.getTextContent();
+
+    pageItemsCacheRef.current.set(pageNumber, textContent.items);
+    return textContent.items;
+  }
+
+  function clearHighlights() {
+    pagesRef.current.forEach((p) => {
+      if (p.highlightLayer) p.highlightLayer.innerHTML = "";
+    });
+  }
+
+  function drawHighlights(results: SearchMatch[], activeIndex: number) {
+    clearHighlights();
+
+    results.forEach((m, i) => {
+      const pageInfo = pagesRef.current.find(
+        (p) => p.page === m.page
+      );
+      if (!pageInfo?.highlightLayer) return;
+
+      const box = document.createElement("div");
+      box.style.position = "absolute";
+      box.style.left = `${m.left}px`;
+      box.style.top = `${m.top}px`;
+      box.style.width = `${m.width}px`;
+      box.style.height = `${m.height}px`;
+      box.style.borderRadius = "2px";
+      box.style.background =
+        i === activeIndex
+          ? "rgba(255, 140, 0, 0.65)"
+          : "rgba(255, 220, 0, 0.45)";
+
+      pageInfo.highlightLayer.appendChild(box);
+    });
+  }
+
+  // Gambar ulang / bersihkan highlight tiap kali hasil atau posisi aktif berubah
+  useEffect(() => {
+    drawHighlights(searchResults, searchIndex);
+  }, [searchResults, searchIndex]);
+
   async function searchPdf(query: string) {
     if (!pdf || !query.trim()) {
       setSearchResults([]);
@@ -380,37 +471,88 @@ export default function PdfViewerClient({
       return;
     }
 
-    const results: {
-      page: number;
-      text: string;
-    }[] = [];
+    const results: SearchMatch[] = [];
 
-    const normalizedQuery =
-      query.toLowerCase();
+    const normalizedQuery = query.trim().toLowerCase();
+    const CONTEXT = 42;
 
     for (
       let pageNumber = 1;
       pageNumber <= pdf.numPages;
       pageNumber++
     ) {
-      const page = await pdf.getPage(pageNumber);
+      const items = await getPageItems(pageNumber);
+      const pageInfo = pagesRef.current.find(
+        (p) => p.page === pageNumber
+      );
+      const viewport = pageInfo?.viewport;
 
-      const textContent =
-        await page.getTextContent();
+      for (const item of items) {
+        const text: string = item.str || "";
+        if (!text) continue;
 
-      const text = textContent.items
-        .map((item: any) => item.str)
-        .join(" ");
+        const lowerText = text.toLowerCase();
 
-      if (
-        text
-          .toLowerCase()
-          .includes(normalizedQuery)
-      ) {
-        results.push({
-          page: pageNumber,
-          text,
-        });
+        let idx = 0;
+        while (
+          (idx = lowerText.indexOf(normalizedQuery, idx)) !== -1
+        ) {
+          let left = 0;
+          let top = 0;
+          let width = 4;
+          let height = 12;
+
+          // Konversi posisi teks (koordinat PDF) ke posisi
+          // pixel CSS di atas canvas halaman yang di-render.
+          if (viewport) {
+            const tx = item.transform;
+            const point = viewport.convertToViewportPoint(
+              tx[4],
+              tx[5]
+            );
+
+            const glyphHeight =
+              Math.abs(tx[3]) *
+              Math.abs(viewport.transform[3]);
+
+            const totalWidth =
+              (item.width || 0) *
+              Math.abs(viewport.transform[0]);
+
+            const charWidth =
+              totalWidth / (text.length || 1);
+
+            left = point[0] + idx * charWidth;
+            top = point[1] - glyphHeight;
+            width = Math.max(
+              charWidth * normalizedQuery.length,
+              4
+            );
+            height = glyphHeight + 2;
+          }
+
+          results.push({
+            page: pageNumber,
+            before: text.slice(
+              Math.max(0, idx - CONTEXT),
+              idx
+            ),
+            match: text.slice(
+              idx,
+              idx + normalizedQuery.length
+            ),
+            after: text.slice(
+              idx + normalizedQuery.length,
+              idx + normalizedQuery.length + CONTEXT
+            ),
+            left,
+            top,
+            width,
+            height,
+          });
+
+          idx += normalizedQuery.length;
+        }
       }
     }
 
@@ -418,10 +560,52 @@ export default function PdfViewerClient({
 
     if (results.length > 0) {
       setSearchIndex(0);
-      goToPage(results[0].page);
+      scrollToMatch(results[0]);
     } else {
       setSearchIndex(-1);
     }
+  }
+
+  function handleSearchInputChange(value: string) {
+    setSearchText(value);
+
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    searchDebounceRef.current = setTimeout(() => {
+      searchPdf(value);
+    }, 250);
+  }
+
+  /*
+   * Scroll ke posisi match yang tepat (bukan cuma ke atas halaman)
+   */
+  function scrollToMatch(match: SearchMatch) {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const target = pagesRef.current.find(
+      (item) => item.page === match.page
+    );
+    if (!target) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.element.getBoundingClientRect();
+
+    const offset =
+      targetRect.top -
+      containerRect.top +
+      container.scrollTop +
+      match.top -
+      120;
+
+    container.scrollTo({
+      top: Math.max(0, offset),
+      behavior: "smooth",
+    });
+
+    setCurrentPage(match.page);
   }
 
   function nextSearch() {
@@ -432,7 +616,7 @@ export default function PdfViewerClient({
       searchResults.length;
 
     setSearchIndex(next);
-    goToPage(searchResults[next].page);
+    scrollToMatch(searchResults[next]);
   }
 
   function previousSearch() {
@@ -443,8 +627,35 @@ export default function PdfViewerClient({
       searchResults.length;
 
     setSearchIndex(previous);
-    goToPage(searchResults[previous].page);
+    scrollToMatch(searchResults[previous]);
   }
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setSearchText("");
+    setSearchResults([]);
+    setSearchIndex(-1);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+  }
+
+  useEffect(() => {
+    if (!searchOpen) return;
+
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        searchPanelRef.current &&
+        !searchPanelRef.current.contains(e.target as Node)
+      ) {
+        closeSearch();
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, [searchOpen]);
 
   /*
    * Loading
@@ -677,7 +888,10 @@ export default function PdfViewerClient({
           
           {/* SEARCH */}
           <button
-            onClick={() => setSearchOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSearchOpen((open) => !open);
+            }}
             title="Cari"
             className={`
               flex h-9 w-9 items-center justify-center
@@ -764,40 +978,45 @@ export default function PdfViewerClient({
       {/* SEARCH PANEL */}
       {searchOpen && (
         <div
+          ref={searchPanelRef}
           className="
             absolute
             right-4
             top-20
             z-[200]
-            w-[360px]
+            w-[380px]
             overflow-hidden
             rounded-xl
             border border-white/[0.12]
-            bg-[#111]/95
+            bg-[#111]
             shadow-2xl
-            backdrop-blur-xl
           "
         >
-          <div className="flex items-center gap-2 border-b border-white/[0.1] p-3">
+          {/* HEAD */}
+          <div className="flex items-center gap-2.5 border-b border-white/[0.1] px-4 pt-4 pb-3">
             <Search
               size={16}
-              className="text-white/40"
+              className="shrink-0 text-white/40"
             />
 
             <input
               autoFocus
               value={searchText}
-              onChange={(e) => {
-                setSearchText(e.target.value);
-                searchPdf(e.target.value);
-              }}
+              onChange={(e) =>
+                handleSearchInputChange(e.target.value)
+              }
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  nextSearch();
+                  e.preventDefault();
+                  if (e.shiftKey) {
+                    previousSearch();
+                  } else {
+                    nextSearch();
+                  }
                 }
 
                 if (e.key === "Escape") {
-                  setSearchOpen(false);
+                  closeSearch();
                 }
               }}
               placeholder="Cari teks dalam dokumen..."
@@ -812,31 +1031,87 @@ export default function PdfViewerClient({
               "
             />
 
-            <button
-              onClick={() => {
-                setSearchOpen(false);
-                setSearchText("");
-                setSearchResults([]);
-              }}
-              className="text-white/40 transition hover:text-white"
-            >
-              <X size={16} />
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between p-3">
-            <span className="text-xs text-white/40">
+            <span className="min-w-[48px] shrink-0 text-right text-[11px] text-white/40">
               {searchResults.length > 0
                 ? `${searchIndex + 1} / ${searchResults.length}`
-                : searchText
+                : searchText.trim()
                   ? "Tidak ditemukan"
                   : ""}
             </span>
 
+            <button
+              onClick={closeSearch}
+              title="Tutup (Esc)"
+              className="
+                flex h-[26px] w-[26px] shrink-0
+                items-center justify-center
+                rounded-md
+                border border-white/[0.12]
+                bg-white/[0.07]
+                text-white/60
+                transition
+                hover:bg-white/[0.14] hover:text-white
+              "
+            >
+              <X size={14} />
+            </button>
+          </div>
+
+          {/* RESULTS LIST */}
+          <div className="max-h-[320px] overflow-y-auto py-2">
+            {searchText.trim() && searchResults.length === 0 && (
+              <div className="px-4 py-8 text-center text-[13px] text-white/40">
+                Tidak ditemukan
+              </div>
+            )}
+
+            {searchResults.map((result, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  setSearchIndex(i);
+                  scrollToMatch(result);
+                }}
+                className={`
+                  flex w-full items-start gap-3 px-4 py-[10px] text-left transition
+                  ${
+                    i === searchIndex
+                      ? "bg-white/[0.1]"
+                      : "hover:bg-white/[0.06]"
+                  }
+                `}
+              >
+                <span
+                  className="
+                    mt-[1px] shrink-0 whitespace-nowrap
+                    rounded border border-white/[0.1]
+                    bg-white/[0.07]
+                    px-[7px] py-[2px]
+                    text-[11px] font-bold tracking-wide
+                    text-white/40
+                  "
+                >
+                  Hal. {result.page}
+                </span>
+
+                <span className="line-clamp-2 text-[13px] leading-relaxed text-white/60">
+                  {result.before}
+                  <mark className="rounded-sm bg-yellow-400/35 px-[1px] text-white">
+                    {result.match}
+                  </mark>
+                  {result.after}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* FOOTER */}
+          <div className="flex items-center justify-between gap-2 border-t border-white/[0.1] px-4 py-[9px]">
             <div className="flex gap-1">
               <button
                 onClick={previousSearch}
                 disabled={!searchResults.length}
+                title="Sebelumnya"
                 className="rounded-lg bg-white/5 p-2 text-white/60 hover:bg-white/10 disabled:opacity-30"
               >
                 <ChevronLeft size={14} />
@@ -845,11 +1120,16 @@ export default function PdfViewerClient({
               <button
                 onClick={nextSearch}
                 disabled={!searchResults.length}
+                title="Berikutnya"
                 className="rounded-lg bg-white/5 p-2 text-white/60 hover:bg-white/10 disabled:opacity-30"
               >
                 <ChevronRight size={14} />
               </button>
             </div>
+
+            <span className="text-[11px] whitespace-nowrap text-white/40">
+              Enter ↓&nbsp;&nbsp;Shift+Enter ↑&nbsp;&nbsp;Esc tutup
+            </span>
           </div>
         </div>
       )}
